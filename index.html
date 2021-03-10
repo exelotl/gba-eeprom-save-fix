@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GBA EEPROM Save Fixer</title>
+</head>
+<body>
+<h2>GBA EEPROM Save Fixer</h2>
+<p>A tool to fix wrong byte order GBA EEPROM saves as created by some emulators.</p>
+<p>Please open your .sav using the input below (or drag it onto the page)</p>
+<p><input type="file" accept=".sav"></p>
+<p id="error" style="color: #c55"></p>
+<p id="success" style="color: #3a8"></p>
+
+<script>
+
+const success = document.getElementById('success')
+const error = document.getElementById('error')
+const input = document.querySelector('input[type=file]')
+
+input.onchange = () => {
+  handleFile(input.files[0])
+}
+window.ondragenter = e => e.preventDefault()
+window.ondragover = e => e.preventDefault()
+window.ondragleave = e => e.preventDefault()
+window.ondrop = e => {
+  handleFile(e.dataTransfer.files[0])
+  e.preventDefault()
+}
+window.onerror = (message, source, lineno, colno, err) => {
+  error.innerText = message
+}
+
+function handleFile(file) {
+  
+  success.innerText = ''
+  error.innerText = ''
+
+  const reader = new FileReader()
+
+  reader.onload = event => {
+    const arr = new Uint8Array(reader.result)
+    const len = arr.length
+
+    if ((len < 32) || (len & (len - 1)) !== 0) {
+      throw new Error('Broken save file or incorrect size!')
+    }
+
+    for (let i = 0; i < len; i += 8) {
+      const a = arr[i+0]
+      const b = arr[i+1]
+      const c = arr[i+2]
+      const d = arr[i+3]
+      const e = arr[i+4]
+      const f = arr[i+5]
+      const g = arr[i+6]
+      const h = arr[i+7]
+      arr[i+0] = h
+      arr[i+1] = g
+      arr[i+2] = f
+      arr[i+3] = e
+      arr[i+4] = d
+      arr[i+5] = c
+      arr[i+6] = b
+      arr[i+7] = a
+    }
+    
+    saveByteArray(file.name, arr)
+  }
+  reader.readAsArrayBuffer(file)
+}
+
+function saveByteArray(filename, bytes) {
+  const blob = new Blob([bytes], {type: 'application/octet-stream'})
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = filename
+  success.innerText = 'Fixed!'
+  link.click()
+}
+
+</script>
+
+</body>
+</html>
